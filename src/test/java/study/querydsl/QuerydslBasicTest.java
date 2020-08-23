@@ -2,6 +2,8 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
@@ -12,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
 import study.querydsl.entity.QTeam;
@@ -503,6 +507,112 @@ public class QuerydslBasicTest {
             Integer age = tuple.get(member.age);
             System.out.println("username : " + username);
             System.out.println("age : " + age);
+        }
+    }
+
+    /**
+     * 순수 JPA에서는 DTO를 조회할때에는 new 명령어를 사용해야 하며 패키지이름을 명시적으로 다 적어줘야합니다.
+     * 생성자 방식에만 지원함으로 전부 적어줘야 한다.
+     */
+    @Test
+    public void findDtoByJPQL() {
+        List<MemberDto> result = em.createQuery("select new study.querydsl.dto.MemberDto(m.username, m.age) from Member m", MemberDto.class)
+                .getResultList();
+
+        for(MemberDto dto : result) {
+            System.out.println("memberDto = " + dto);
+        }
+    }
+
+    /**
+     * Setter()를 활용한 방법
+     */
+    @Test
+    public void findDtoSetter() {
+        List<MemberDto> result= queryFactory
+                .select(Projections.bean(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for(MemberDto dto : result) {
+            System.out.println("memberDto = " + dto);
+        }
+    }
+
+    /**
+     * field를 이용하는 방법
+     */
+    @Test
+    public void findDtoField() {
+        List<MemberDto> result= queryFactory
+                .select(Projections.fields(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for(MemberDto dto : result) {
+            System.out.println("memberDto = " + dto);
+        }
+    }
+
+    /**
+     * 생성자로 찾을때에는 뒤에 조회하려고 하는 필드를의 타입들과 클래스 내 변수 타입들과 일치해야한다.
+     */
+    @Test
+    public void findDtoConstruct() {
+        List<MemberDto> result= queryFactory
+                .select(Projections.constructor(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for(MemberDto dto : result) {
+            System.out.println("memberDto = " + dto);
+        }
+    }
+
+    /**
+     * 1.필드명이 맞지 않으면 에러가 발생되는게 아니라 값을 조회하지 못하기 떄문에 null이 매핑된다.
+     *   이를 해결하기 위해 .as(필드명)를 넣어주면 된다.
+     * 2. 서브 쿼리를 사용해서 데이터를 주입하고 싶을때는 Expression을 이용하여 "age"이름으로 감싸서 넘겨준다.
+     */
+    @Test
+    public void findUserDto() {
+        QMember memberSub = new QMember("memberSub");
+        List<UserDto> result= queryFactory
+                .select(Projections.fields(UserDto.class,
+                        member.username.as("name"),
+                        ExpressionUtils.as(JPAExpressions
+                                .select(memberSub.age.max())
+                                .from(memberSub), "age")
+                        ))
+//                        member.age))
+                .from(member)
+                .fetch();
+
+        for(UserDto dto : result) {
+            System.out.println("UserDto = " + dto);
+        }
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void findUserDtoConstruct() {
+        List<UserDto> result= queryFactory
+                .select(Projections.constructor(UserDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for(UserDto dto : result) {
+            System.out.println("UserDto = " + dto);
         }
     }
 }
