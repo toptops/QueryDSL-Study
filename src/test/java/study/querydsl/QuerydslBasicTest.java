@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
 import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
@@ -600,7 +601,7 @@ public class QuerydslBasicTest {
     }
 
     /**
-     *
+     * 컴파일 오류를 잡을 수 없고, 런타임 오류를 발생한다.ㅅ
      */
     @Test
     public void findUserDtoConstruct() {
@@ -613,6 +614,24 @@ public class QuerydslBasicTest {
 
         for(UserDto dto : result) {
             System.out.println("UserDto = " + dto);
+        }
+    }
+
+    /**
+     * 생성자 지원 방식
+     * 단점
+     * 1. QMemberDto를 생성해야 한다.
+     * 2. QueryDsl @QueryProjecion에 의존성이 생긴다.
+     *
+     */
+    @Test
+    public void findDtoByQueryProjection() {
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+        for(MemberDto dto : result) {
+            System.out.println("memberDto = " + dto);
         }
     }
 }
